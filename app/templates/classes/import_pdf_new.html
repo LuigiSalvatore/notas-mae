@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Importar Nova Turma — Notas & Frequência{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 2rem auto; background-color: var(--bg-surface); padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+  <h2 style="color: #FFF; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+    📥 Importar Turma do PDF da Universidade
+  </h2>
+
+  <form method="POST" action="{{ url_for('classes.import_pdf_new') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="upload">
+
+    <div class="form-group">
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.5rem;">
+        Envie o PDF oficial ("Lista de Chamada / Frequência"). A plataforma criará uma nova turma baseada nos dados do cabeçalho da folha e importará todos os alunos da lista automaticamente.
+      </p>
+    </div>
+
+    {% if needs_password %}
+      <div class="alert alert-warning" style="font-size: 0.9rem;">
+        Este arquivo PDF está protegido por senha. Por favor, insira a senha para descriptografar.
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="pdf_password">Senha do PDF</label>
+        <input type="password" id="pdf_password" name="pdf_password" class="form-control" placeholder="Senha do documento" required autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="pdf_file">Arquivo PDF (Selecione novamente)</label>
+        <input type="file" id="pdf_file" name="pdf_file" class="form-control" accept=".pdf" required>
+      </div>
+    {% else %}
+      <div class="form-group">
+        <label class="form-label" for="pdf_file">Arquivo PDF da Chamada</label>
+        <input type="file" id="pdf_file" name="pdf_file" class="form-control" accept=".pdf" required>
+      </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+      <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Carregar PDF</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Aulas e Frequência — {{ co.subject_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <div style="margin-bottom: 2rem;">
+    <a href="{{ url_for('students.list_students', class_id=co.id) }}" style="font-size: 0.9rem; color: var(--text-muted);">&larr; Voltar para a turma</a>
+    <h1 style="color: #FFF; font-size: 1.5rem; font-weight: 700; margin-top: 0.5rem;">
+      📅 Aulas e Registro de Frequência
+    </h1>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; align-items: start;">
+    <!-- Sessions List -->
+    <div>
+      <h3 style="color: #FFF; margin-bottom: 1rem;">Aulas Cadastradas</h3>
+      
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        {% for session in sessions %}
+          <div style="background-color: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 1.1rem; font-weight: 600; color: #FFF;">
+                {{ session.date|pt_date }}
+              </div>
+              {% if session.label %}
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+                  🏷️ {{ session.label }}
+                </div>
+              {% endif %}
+              
+              <!-- Session summary -->
+              {% set sum = summaries.get(session.id, {'present': 0, 'absent': 0, 'justified': 0, 'unmarked': 0}) %}
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; display: flex; gap: 0.75rem;">
+                <span style="color: var(--success);">{{ sum.present }} Presenças</span>
+                <span style="color: var(--danger);">{{ sum.absent }} Faltas</span>
+                {% if sum.justified > 0 %}
+                  <span style="color: var(--warning);">{{ sum.justified }} Just.</span>
+                {% endif %}
+                {% if sum.unmarked > 0 %}
+                  <span style="color: var(--text-muted);">({{ sum.unmarked }} Não marcados)</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem;">
+              <a href="{{ url_for('attendance.session_detail', class_id=co.id, session_id=session.id) }}" class="btn btn-primary" style="min-height: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">
+                Chamada
+              </a>
+              
+              <form method="POST" action="{{ url_for('attendance.delete_session', class_id=co.id, session_id=session.id) }}" style="margin: 0;" onsubmit="return confirm('Deseja realmente excluir esta aula? Todos os registros de presença dos alunos nesta data serão apagados.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary" style="min-height: auto; padding: 0.5rem; color: var(--danger); border-color: var(--border-color);">
+                  🗑️
+                </button>
+              </form>
+            </div>
+          </div>
+        {% else %}
+          <div style="text-align: center; padding: 3rem; background-color: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border-color); color: var(--text-muted);">
+            Nenhuma aula cadastrada para esta turma ainda.
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Create Session Form -->
+    <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+      <h3 style="color: #FFF; margin-bottom: 1.25rem;">➕ Registrar Nova Aula</h3>
+      
+      <form method="POST" action="{{ url_for('attendance.new_session', class_id=co.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+          <label class="form-label" for="date">Data da Aula</label>
+          <input type="date" id="date" name="date" class="form-control" value="{{ today }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="label">Rótulo / Descrição Opcional</label>
+          <input type="text" id="label" name="label" class="form-control" placeholder="Ex: Aula Prática, Reposição">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Criar Aula e Iniciar Chamada</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

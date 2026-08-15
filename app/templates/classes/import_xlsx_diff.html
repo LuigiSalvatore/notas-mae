@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmar Importação de Notas{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+  <div style="margin-bottom: 2rem;">
+    <h1 style="color: #FFF; font-size: 1.5rem; font-weight: 700;">
+      🔍 Comparação de Notas a Importar
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      Revise as alterações de notas detectadas na planilha Excel.
+    </p>
+  </div>
+
+  <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: 2rem; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.9rem;">
+    <div>
+      <strong style="color: #FFF;">Componentes Identificados (Mapeados):</strong>
+      <div style="margin-top: 0.25rem;">
+        {% for col in matched_components %}
+          <span class="badge badge-info" style="margin-right: 0.25rem;">{{ col }}</span>
+        {% else %}
+          <span style="color: var(--danger); font-style: italic;">Nenhum componente mapeado. Verifique os títulos das colunas.</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if unmatched_columns %}
+      <div style="border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+        <strong style="color: var(--warning);">Colunas Extras Ignoradas:</strong>
+        <div style="margin-top: 0.25rem; font-size: 0.85rem; color: var(--text-muted);">
+          As seguintes colunas não correspondem a nenhuma avaliação cadastrada na turma e serão ignoradas:
+          <div style="margin-top: 0.25rem;">
+            {% for col in unmatched_columns %}
+              <span class="badge badge-neutral" style="margin-right: 0.25rem;">{{ col }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Diff Listing -->
+  <div style="margin-bottom: 2rem;">
+    <h3 style="color: var(--accent); font-size: 1.1rem; margin-bottom: 0.75rem;">
+      📝 Alterações de Nota ({{ diffs|length }})
+    </h3>
+    <div class="grade-table-container">
+      <table class="grade-table">
+        <thead>
+          <tr>
+            <th>Aluno</th>
+            <th style="width: 150px;">Cartão</th>
+            <th style="width: 200px;">Avaliação</th>
+            <th style="width: 120px; text-align: center;">Nota Anterior</th>
+            <th style="width: 120px; text-align: center;">Nova Nota</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in diffs %}
+            <tr>
+              <td style="color: #FFF; font-weight: 500;">{{ d.student_name }}</td>
+              <td>{{ d.cartao }}</td>
+              <td>{{ d.component_name }}</td>
+              <td style="text-align: center; color: var(--text-muted);">
+                {% if d.old_value is not None %}
+                  {{ d.old_value|round(1) }}
+                {% else %}
+                  {{ d.old_status or '—' }}
+                {% endif %}
+              </td>
+              <td style="text-align: center; color: var(--success); font-weight: 600;">
+                {{ d.new_value|round(1) }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Save Commit Action -->
+  <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+    <a href="{{ url_for('grades.grade_grid', class_id=co.id) }}" class="btn btn-secondary">Descartar</a>
+    <form method="POST" action="{{ url_for('classes.import_xlsx_confirm', class_id=co.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-primary">Salvar Notas</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

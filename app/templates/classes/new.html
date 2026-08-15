@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Nova Turma — Notas & Frequência{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 2rem auto; background-color: var(--bg-surface); padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+  <h2 style="color: #FFF; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+    ➕ Cadastrar Nova Turma Manualmente
+  </h2>
+
+  <form method="POST" action="{{ url_for('classes.new_class') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label class="form-label" for="subject_name">Atividade de Ensino (Nome da Disciplina) *</label>
+      <input type="text" id="subject_name" name="subject_name" class="form-control" placeholder="Ex: INTRODUÇÃO À EMBRIOLOGIA" required>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="turma">Turma</label>
+        <input type="text" id="turma" name="turma" class="form-control" placeholder="Ex: U">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="periodo_letivo">Período Letivo</label>
+        <input type="text" id="periodo_letivo" name="periodo_letivo" class="form-control" placeholder="Ex: 2025/1">
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="creditos">Créditos</label>
+        <input type="number" id="creditos" name="creditos" class="form-control" placeholder="Ex: 2">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="nivel">Nível</label>
+        <input type="text" id="nivel" name="nivel" class="form-control" placeholder="Ex: Graduação">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="professores">Professores</label>
+      <input type="text" id="professores" name="professores" class="form-control" placeholder="Ex: Professor A, Professor B">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="department">Departamento</label>
+      <input type="text" id="department" name="department" class="form-control" placeholder="Ex: DEPARTAMENTO DE CIÊNCIAS MORFOLÓGICAS">
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+      <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Criar Turma</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

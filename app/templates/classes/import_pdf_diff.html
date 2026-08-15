@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Visualizar Diferenças da Importação{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+  <div style="margin-bottom: 2rem;">
+    <h1 style="color: #FFF; font-size: 1.5rem; font-weight: 700;">
+      🔍 Comparação da Lista de Chamada
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      Revise as mudanças no diário de classe antes de salvar.
+    </p>
+  </div>
+
+  <div style="background-color: var(--bg-surface); padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: 2rem;">
+    <h3 style="color: #FFF; font-size: 1.15rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Informações extraídas do cabeçalho</h3>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+      <div><strong>Disciplina:</strong> <span style="color: #FFF;">{{ header.subject_name }}</span></div>
+      <div><strong>Turma:</strong> <span style="color: #FFF;">{{ header.turma }}</span></div>
+      <div><strong>Período:</strong> <span style="color: #FFF;">{{ header.periodo_letivo }}</span></div>
+      <div><strong>Nível:</strong> <span style="color: #FFF;">{{ header.nivel }}</span></div>
+      <div><strong>Professores:</strong> <span style="color: #FFF;">{{ header.professores }}</span></div>
+      <div><strong>Emissão:</strong> <span style="color: #FFF;">{{ header.data_emissao }}</span></div>
+    </div>
+  </div>
+
+  <!-- New Students -->
+  <div style="margin-bottom: 2rem;">
+    <h3 style="color: var(--success); font-size: 1.1rem; margin-bottom: 0.75rem;">
+      🟢 Novos Alunos a Adicionar ({{ diff.new_students|length }})
+    </h3>
+    {% if diff.new_students %}
+      <div class="grade-table-container">
+        <table class="grade-table">
+          <thead>
+            <tr>
+              <th style="width: 80px;">Seq.</th>
+              <th style="width: 150px;">Cartão</th>
+              <th>Nome</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in diff.new_students %}
+              <tr>
+                <td>{{ s.seq }}</td>
+                <td>{{ s.cartao }}</td>
+                <td style="color: #FFF; font-weight: 500;">{{ s.nome }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">Nenhum aluno novo detectado.</p>
+    {% endif %}
+  </div>
+
+  <!-- Removed Students (soft delete warning) -->
+  <div style="margin-bottom: 2rem;">
+    <h3 style="color: var(--warning); font-size: 1.1rem; margin-bottom: 0.75rem;">
+      🟡 Alunos Ausentes no Novo PDF ({{ diff.removed_students|length }})
+    </h3>
+    {% if diff.removed_students %}
+      <div class="alert alert-warning" style="font-size: 0.85rem; margin-bottom: 0.75rem; padding: 0.5rem 1rem;">
+        ⚠️ Estes alunos não constam no novo PDF de chamada. Eles serão marcados como <strong>removidos</strong> da turma ativa, porém todo o seu histórico de notas e frequências continuará preservado nos registros.
+      </div>
+      <div class="grade-table-container">
+        <table class="grade-table">
+          <thead>
+            <tr>
+              <th style="width: 80px;">Seq.</th>
+              <th style="width: 150px;">Cartão</th>
+              <th>Nome</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in diff.removed_students %}
+              <tr>
+                <td>{{ e.seq or '—' }}</td>
+                <td>{{ e.student.cartao }}</td>
+                <td style="color: var(--text-muted);">{{ e.student.nome }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">Nenhum aluno ativo ficará ausente.</p>
+    {% endif %}
+  </div>
+
+  <!-- No Changes -->
+  <div style="margin-bottom: 2rem;" x-data="{ open: false }">
+    <h3 style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+      <span>⚪ Sem Alterações ({{ diff.unchanged|length }})</span>
+      <button class="btn btn-secondary" @click="open = !open" style="min-height: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem;" type="button">
+        <span x-text="open ? 'Esconder Lista' : 'Mostrar Lista'">Mostrar Lista</span>
+      </button>
+    </h3>
+    
+    <div x-show="open" x-collapse class="grade-table-container">
+      <table class="grade-table">
+        <thead>
+          <tr>
+            <th style="width: 80px;">Seq.</th>
+            <th style="width: 150px;">Cartão</th>
+            <th>Nome</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s, e in diff.unchanged %}
+            <tr>
+              <td>{{ s.seq }}</td>
+              <td>{{ s.cartao }}</td>
+              <td>{{ s.nome }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Save Commit Action -->
+  <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+    <a href="{{ url_for('students.list_students', class_id=co.id) }}" class="btn btn-secondary">Descartar Alterações</a>
+    <form method="POST" action="{{ url_for('classes.import_pdf_confirm', class_id=co.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-primary">Confirmar e Aplicar Lista</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

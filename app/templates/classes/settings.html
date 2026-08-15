@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Configurações de Turma — {{ co.subject_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+  <div style="margin-bottom: 2rem;">
+    <a href="{{ url_for('students.list_students', class_id=co.id) }}" style="font-size: 0.9rem; color: var(--text-muted);">&larr; Voltar para a turma</a>
+    <h1 style="color: #FFF; font-size: 1.5rem; font-weight: 700; margin-top: 0.5rem;">
+      ⚙️ Configurações da Turma: {{ co.subject_name }} ({{ co.turma }})
+    </h1>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+    <!-- General Settings Form -->
+    <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+      <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Configurações Gerais</h3>
+      
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="save_settings">
+
+        <div class="form-group">
+          <label class="form-label" for="min_attendance_pct">Frequência Mínima para Aprovação (%)</label>
+          <input type="number" step="0.1" id="min_attendance_pct" name="min_attendance_pct" class="form-control" value="{{ co.settings.min_attendance_pct if co.settings else 75.0 }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="min_avg_grade">Média Mínima para Aprovação</label>
+          <input type="number" step="0.1" id="min_avg_grade" name="min_avg_grade" class="form-control" value="{{ co.settings.min_avg_grade if co.settings else 7.0 }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="aggregation_method">Método de Agregação das Notas</label>
+          <select id="aggregation_method" name="aggregation_method" class="form-control">
+            <option value="simple_avg" {% if co.settings and co.settings.aggregation_method == 'simple_avg' %}selected{% endif %}>Média Simples (Todos com peso igual)</option>
+            <option value="weighted_avg" {% if co.settings and co.settings.aggregation_method == 'weighted_avg' %}selected{% endif %}>Média Ponderada (Pesos customizados)</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Configurações</button>
+      </form>
+
+      <form method="POST" action="{{ url_for('classes.archive_class', class_id=co.id) }}" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if co.archived %}
+          <button type="submit" class="btn btn-secondary" style="width: 100%; border-color: var(--success); color: var(--success);">Reativar Turma</button>
+        {% else %}
+          <button type="submit" class="btn btn-secondary" style="width: 100%; border-color: var(--danger); color: var(--danger);" onclick="return confirm('Deseja realmente arquivar esta turma?')">Arquivar Turma</button>
+        {% endif %}
+      </form>
+    </div>
+
+    <!-- Components management -->
+    <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+      <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Componentes de Avaliação</h3>
+
+      <!-- Component List -->
+      <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;" id="component-list-container">
+        {% for comp in co.components %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background-color: rgba(0,0,0,0.2); border-radius: var(--radius-md); border: 1px solid var(--border-color);" data-id="{{ comp.id }}">
+          <div>
+            <span style="font-weight: 600; color: #FFF;">{{ comp.name }}</span>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+              <span>Escala: {{ 'A-F' if comp.scale_type == 'letter_A_F' else '0.0 - 10.0' }}</span>
+              {% if co.settings.aggregation_method == 'weighted_avg' %}
+                <span style="margin-left: 0.5rem;">| Peso: {{ comp.weight }}</span>
+              {% endif %}
+              {% if comp.covers_component %}
+                <span style="margin-left: 0.5rem; color: var(--warning);">| PS de: {{ comp.covers_component.name }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <form method="POST" style="margin: 0;" onsubmit="return confirm('Deseja realmente excluir este componente e todas as notas inseridas nele?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="delete_component">
+            <input type="hidden" name="comp_id" value="{{ comp.id }}">
+            <button type="submit" class="btn btn-secondary" style="min-height: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: var(--danger); color: var(--danger);">Excluir</button>
+          </form>
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 1rem;">Nenhum componente cadastrado.</p>
+        {% endfor %}
+      </div>
+
+      <!-- Add Component Form -->
+      <div style="padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+        <h4 style="color: #FFF; margin-bottom: 1rem; font-size: 1rem;">➕ Adicionar Componente</h4>
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="add_component">
+
+          <div class="form-group">
+            <label class="form-label" for="comp_name">Nome da Avaliação</label>
+            <input type="text" id="comp_name" name="comp_name" class="form-control" placeholder="Ex: Prova 1, Trabalho Final" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="comp_scale">Escala de Notas</label>
+              <select id="comp_scale" name="comp_scale" class="form-control">
+                <option value="numeric_0_10">Numérica (0.0 a 10.0)</option>
+                <option value="letter_A_F">Conceito (A, B, C, D, F)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="comp_weight">Peso da Avaliação</label>
+              <input type="number" step="0.05" id="comp_weight" name="comp_weight" class="form-control" value="1.0">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="covers_component_id">Este componente é Prova Substitutiva (PS)?</label>
+            <select id="covers_component_id" name="covers_component_id" class="form-control">
+              <option value="">Não (Avaliação Regular)</option>
+              {% for comp in co.components %}
+                {% if not comp.is_ps %}
+                  <option value="{{ comp.id }}">Sim, substitui: {{ comp.name }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+              A nota da PS substituirá a nota regular apenas dos alunos que possuírem falta justificada (FJ) na avaliação correspondente.
+            </p>
+          </div>
+
+          <button type="submit" class="btn btn-secondary" style="width: 100%;">Adicionar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collaborators (Only visible or editable based on ownership) -->
+  <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-top: 2rem;">
+    <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Professores com Acesso</h3>
+    
+    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;">
+      <!-- Owner -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background-color: rgba(0,0,0,0.1); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+        <div>
+          <span style="font-weight: 600; color: #FFF;">{{ co.owner.display_name if co.owner else 'Administrador' }} (@{{ co.owner.username if co.owner else 'admin' }})</span>
+          <span style="margin-left: 0.5rem; font-size: 0.8rem; background-color: var(--primary); color: #FFF; padding: 0.1rem 0.4rem; border-radius: 4px;">Proprietário</span>
+        </div>
+      </div>
+
+      <!-- Collaborators -->
+      {% for membership in co.teacher_memberships %}
+        {% if membership.role != 'owner' %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background-color: rgba(0,0,0,0.2); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div>
+            <span style="font-weight: 600; color: #FFF;">{{ membership.teacher.display_name }} (@{{ membership.teacher.username }})</span>
+            <span style="margin-left: 0.5rem; font-size: 0.8rem; background-color: var(--border-color); color: var(--text-muted); padding: 0.1rem 0.4rem; border-radius: 4px;">Colaborador</span>
+          </div>
+
+          {% if is_owner %}
+          <form method="POST" style="margin: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="remove_teacher">
+            <input type="hidden" name="teacher_id" value="{{ membership.teacher.id }}">
+            <button type="submit" class="btn btn-secondary" style="min-height: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: var(--danger); color: var(--danger);">Remover Acesso</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    {% if is_owner %}
+    <div style="padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+      <h4 style="color: #FFF; margin-bottom: 1rem; font-size: 1rem;">🔑 Conceder Acesso a outro Professor</h4>
+      <form method="POST" style="display: flex; gap: 1rem; align-items: flex-end;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="add_teacher">
+        
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+          <label class="form-label" for="username">Nome de Usuário do Professor</label>
+          <input type="text" id="username" name="username" class="form-control" placeholder="Ex: joao_silva" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="height: var(--input-height); min-height: auto; padding: 0 1.5rem;">Adicionar</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

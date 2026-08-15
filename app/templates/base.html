@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Plataforma de Notas e Frequência{% endblock %}</title>
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+  {% block extra_css %}{% endblock %}
+
+  <!-- Alpine.js CDN for lightweight reactivity -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body x-data="{ undoOpen: false }">
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="brand">
+      <a href="{{ url_for('dashboard.index') }}" style="color: #FFF; font-weight: 700;">
+        📊 Notas & Frequência
+      </a>
+    </div>
+    {% if current_user.is_authenticated %}
+    <nav class="nav-links">
+      <a href="{{ url_for('dashboard.index') }}" class="nav-item">Painel</a>
+      <a href="{{ url_for('settings.index') }}" class="nav-item">Configurações</a>
+      <button class="btn btn-secondary" @click="undoOpen = !undoOpen" style="min-height: auto; padding: 0.25rem 0.75rem;">
+        🔄 Desfazer
+      </button>
+      <a href="{{ url_for('auth.logout') }}" class="nav-item" style="color: var(--danger);">Sair</a>
+    </nav>
+    {% endif %}
+  </header>
+
+  <!-- Flash Messages -->
+  <div class="main-content" style="padding-bottom: 0;">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category if category != 'error' else 'danger' }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- Main View -->
+  <main class="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Undo drawer bottom-right panel -->
+  {% if current_user.is_authenticated %}
+  <div class="undo-drawer" x-show="undoOpen" x-transition x-cloak style="display: none;">
+    <div class="undo-drawer-header">
+      <span style="font-weight: 600; font-size: 0.9rem;">🔄 Ações Recentes</span>
+      <button class="btn btn-secondary" @click="undoOpen = false" style="min-height: auto; padding: 0.15rem 0.5rem; font-size: 0.8rem;">Fechar</button>
+    </div>
+    <div class="undo-drawer-content" id="undo-actions-list">
+      <!-- AJAX populated by undo_panel.js -->
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- JS -->
+  {% if current_user.is_authenticated %}
+  <script src="{{ url_for('static', filename='js/undo_panel.js') }}"></script>
+  {% endif %}
+  {% block extra_js %}{% endblock %}
+
+</body>
+</html>

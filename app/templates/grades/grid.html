@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Diário de Notas — {{ co.subject_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .sticky-col {
+    position: sticky;
+    left: 0;
+    background-color: var(--bg-surface);
+    z-index: 10;
+  }
+  .sticky-col-2 {
+    position: sticky;
+    left: 80px;
+    background-color: var(--bg-surface);
+    z-index: 10;
+  }
+  .grade-cell-header {
+    min-width: 110px;
+    text-align: center;
+  }
+  /* Context Menu style for FJ/FI */
+  .grid-info-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.03);
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+  <!-- Header Block -->
+  <div style="margin-bottom: 1.5rem;">
+    <a href="{{ url_for('students.list_students', class_id=co.id) }}" style="font-size: 0.9rem; color: var(--text-muted);">&larr; Voltar para a turma</a>
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 0.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h1 style="color: #FFF; font-size: 1.5rem; font-weight: 700;">📝 Planilha de Notas: {{ co.subject_name }}</h1>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+          Use as setas ou Enter/Tab do teclado para navegar. Digite as notas ou use <strong>FJ</strong> (Falta Justificada) ou <strong>FI</strong> (Falta Injustificada).
+        </p>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ url_for('classes.import_xlsx_upload', class_id=co.id) }}" class="btn btn-secondary" style="min-height: auto; padding: 0.5rem 1rem;">
+          📥 Importar Planilha
+        </a>
+        <a href="{{ url_for('classes.export_page', class_id=co.id) }}" class="btn btn-secondary" style="min-height: auto; padding: 0.5rem 1rem;">
+          📤 Exportar
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-info-bar">
+    <div>
+      <strong>Agregação:</strong> {{ 'Média Ponderada' if co.settings.aggregation_method == 'weighted_avg' else 'Média Simples' }}
+    </div>
+    <div style="display: flex; gap: 1.5rem;">
+      <span><span style="color: var(--warning);">■</span> FJ = Falta Justificada (Elegível para PS)</span>
+      <span><span style="color: var(--danger);">■</span> FI = Falta Injustificada (Equivale a 0.0)</span>
+    </div>
+  </div>
+
+  <!-- Spreadsheet Grid -->
+  <div class="grade-table-container">
+    <table class="grade-table" id="grade-grid">
+      <thead>
+        <tr>
+          <th style="width: 80px;" class="sticky-col">Cartão</th>
+          <th style="min-width: 200px;" class="sticky-col-2">Nome</th>
+          {% for comp in components %}
+            <th class="grade-cell-header" title="{{ comp.name }}">
+              <div>{{ comp.name }}</div>
+              <div style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted); margin-top: 0.25rem;">
+                {% if comp.covers_component %}
+                  <span style="color: var(--warning);">PS ({{ comp.covers_component.name }})</span>
+                {% elif co.settings.aggregation_method == 'weighted_avg' %}
+                  Peso: {{ comp.weight }}
+                {% endif %}
+              </div>
+            </th>
+          {% endfor %}
+          <th style="width: 100px; text-align: center;">Média</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for enrollment in enrollments %}
+          {% set gmap = grade_maps[enrollment.id] %}
+          <tr>
+            <td class="sticky-col" style="font-family: monospace; font-size: 0.85rem;">{{ enrollment.student.cartao }}</td>
+            <td class="sticky-col-2" style="font-weight: 500; color: #FFF;">
+              <a href="{{ url_for('students.student_detail', class_id=co.id, student_id=enrollment.student.id) }}" style="color: inherit;">
+                {{ enrollment.student.nome }}
+              </a>
+            </td>
+            
+            {% for comp in components %}
+              {% set g = gmap.get(comp.id) %}
+              {% set cell_class = '' %}
+              {% set cell_val = '' %}
+              
+              {% if g %}
+                {% if g.status == 'missed_justified' %}
+                  {% set cell_class = 'grade-cell-missed-justified' %}
+                  {% set cell_val = 'FJ' %}
+                {% elif g.status == 'missed_unjustified' %}
+                  {% set cell_class = 'grade-cell-missed-unjustified' %}
+                  {% set cell_val = 'FI' %}
+                {% else %}
+                  {% set cell_val = g.value|format_grade(comp.scale_type) if g.value is not None else '' %}
+                {% endif %}
+              {% endif %}
+
+              <td class="{{ cell_class }}" data-enrollment-id="{{ enrollment.id }}" data-component-id="{{ comp.id }}" style="padding: 0;">
+                <input type="text" class="grade-input" value="{{ cell_val }}" placeholder="—" style="height: 44px; width: 100%; border: none;">
+              </td>
+            {% endfor %}
+
+            <!-- Average -->
+            <td id="avg-{{ enrollment.id }}" style="text-align: center; font-weight: bold; color: var(--accent);">
+              {% set avg = averages[enrollment.id] %}
+              {{ avg|round(2) if avg is not None else '—' }}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+
+      <!-- Column Footer with FJ / FI Count -->
+      <tfoot>
+        <tr style="background-color: rgba(0,0,0,0.15); border-top: 2px solid var(--border-color); font-size: 0.8rem; color: var(--text-muted);">
+          <td colspan="2" style="text-align: right; font-weight: bold; padding-right: 1.5rem;">Faltas na Prova (FJ / FI):</td>
+          {% for comp in components %}
+            <td style="text-align: center; padding: 0.5rem 0;">
+              {% if not comp.is_ps %}
+                {% set mc = miss_counts.get(comp.id, {'justified': 0, 'unjustified': 0}) %}
+                <span style="color: var(--warning);" id="miss-justified-{{ comp.id }}">{{ mc.justified }}</span>
+                <span>/</span>
+                <span style="color: var(--danger);" id="miss-unjustified-{{ comp.id }}">{{ mc.unjustified }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          {% endfor %}
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/grade_grid.js') }}"></script>
+{% endblock %}

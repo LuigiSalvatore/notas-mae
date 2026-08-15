@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Exportar Diário — {{ co.subject_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 2rem auto; background-color: var(--bg-surface); padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+  <h2 style="color: #FFF; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+    📤 Exportar Diário de Classe
+  </h2>
+
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group" x-data="{ format: 'xlsx' }">
+      <label class="form-label">Formato de Exportação</label>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <label style="border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-md); display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+          <input type="radio" name="format" value="xlsx" x-model="format" checked>
+          <span>Excel (.xlsx)</span>
+        </label>
+        <label style="border: 1px solid var(--border-color); padding: 1rem; border-radius: var(--radius-md); display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+          <input type="radio" name="format" value="pdf" x-model="format">
+          <span>Relatório PDF</span>
+        </label>
+      </div>
+
+      <!-- Presets selection -->
+      <div class="form-group">
+        <label class="form-label" for="preset">Tipo de Exportação</label>
+        <select id="preset" name="preset" class="form-control" x-data="{ preset: 'custom' }" x-model="preset">
+          <option value="custom">Completo (Com Nomes e Notas)</option>
+          <option value="anonymized">Anônimo (Apenas Cartão e Notas - ideal para divulgar notas)</option>
+          <option value="failing" x-show="format === 'pdf'">Lista de Reprovados (Apenas alunos abaixo da média ou frequência)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+      <a href="{{ url_for('students.list_students', class_id=co.id) }}" class="btn btn-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Exportar Arquivo</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

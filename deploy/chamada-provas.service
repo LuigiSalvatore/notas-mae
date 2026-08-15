@@ -1,0 +1,12 @@
+[Unit]
+Description=Gunicorn daemon para Plataforma de Notas e Frequencia
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/chamada-provas
+ExecStart=/opt/chamada-provas/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8002 --timeout 120 "run:app"
+
+[Install]
+WantedBy=multi-user.target

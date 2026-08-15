@@ -1,0 +1,10 @@
+Todo
+
+sudo systemctl stop chamada-provas
+sudo rm /opt/chamada-provas/instance/chamada.db
+sudo deploy/setup.sh
+
+
+
+arrumar a questão das médias com trabalho.
+Deixar todo mundo presente e só clicar em ausente se faltar.

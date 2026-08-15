@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Alunos — {{ co.subject_name }}{% endblock %}
+
+{% block content %}
+<div x-data="{ colorCoding: $persist(true).as('colorCoding') }">
+  <!-- Class Context Header & Tabs -->
+  <div style="margin-bottom: 2rem;">
+    <h1 style="color: #FFF; font-size: 1.75rem; font-weight: 700;">{{ co.subject_name }} (Turma {{ co.turma }})</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Período Letivo: {{ co.periodo_letivo }}</p>
+
+    <!-- Sub-navigation tabs -->
+    <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1px;">
+      <a href="{{ url_for('students.list_students', class_id=co.id) }}" class="nav-item active">Alunos</a>
+      <a href="{{ url_for('grades.grade_grid', class_id=co.id) }}" class="nav-item">Notas</a>
+      <a href="{{ url_for('attendance.sessions_list', class_id=co.id) }}" class="nav-item">Presenças</a>
+      <a href="{{ url_for('audit.action_log', class_id=co.id) }}" class="nav-item">Logs / Histórico</a>
+      <a href="{{ url_for('classes.class_settings', class_id=co.id) }}" class="nav-item">Configurações</a>
+    </div>
+  </div>
+
+  <!-- Filters & Controls Bar -->
+  <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+      <!-- Search Input -->
+      <form method="GET" style="margin: 0; display: flex; gap: 0.5rem;">
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <input type="text" name="q" value="{{ q }}" placeholder="🔍 Buscar por cartão ou nome..." class="form-control" style="width: 250px; min-height: 38px; padding: 0.4rem 0.8rem;">
+        <button type="submit" class="btn btn-secondary" style="min-height: 38px; padding: 0 1rem;">Buscar</button>
+        {% if q or letter %}
+          <a href="{{ url_for('students.list_students', class_id=co.id, tab=tab) }}" class="btn btn-secondary" style="min-height: 38px; padding: 0.5rem 1rem;">Limpar</a>
+        {% endif %}
+      </form>
+
+      <!-- Toggle coloring -->
+      <button class="btn btn-secondary" @click="colorCoding = !colorCoding" style="min-height: 38px; padding: 0.5rem 1rem;">
+        🎨 Cores: <span x-text="colorCoding ? 'Ativadas' : 'Desativadas'"></span>
+      </button>
+    </div>
+
+    <!-- Tab switcher (All / Failing) -->
+    <div style="display: flex; gap: 0.5rem; background-color: rgba(0,0,0,0.2); padding: 0.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+      <a href="{{ url_for('students.list_students', class_id=co.id, tab='all', q=q, letter=letter) }}" class="btn {% if tab != 'failing' %}btn-primary{% else %}btn-secondary{% endif %}" style="min-height: auto; padding: 0.4rem 1rem; font-size: 0.85rem;">
+        Todos os Alunos
+      </a>
+      <a href="{{ url_for('students.list_students', class_id=co.id, tab='failing', q=q, letter=letter) }}" class="btn {% if tab == 'failing' %}btn-danger{% else %}btn-secondary{% endif %}" style="min-height: auto; padding: 0.4rem 1rem; font-size: 0.85rem;">
+        🔴 Reprovados
+      </a>
+    </div>
+  </div>
+
+  <!-- Alphabet Filter Bar -->
+  <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color);">
+    {% for l in all_letters %}
+      <a href="{{ url_for('students.list_students', class_id=co.id, letter=l, tab=tab, q=q) }}" 
+         class="badge {% if letter == l %}badge-info{% else %}badge-neutral{% endif %}" 
+         style="padding: 0.4rem 0.6rem; font-size: 0.8rem; cursor: pointer;">
+        {{ l }}
+      </a>
+    {% endfor %}
+  </div>
+
+  <!-- Students Table -->
+  <div class="grade-table-container">
+    <table class="grade-table">
+      <thead>
+        <tr>
+          <th style="width: 80px;">
+            <a href="{{ url_for('students.list_students', class_id=co.id, sort='cartao', dir='desc' if sort_by == 'cartao' and sort_dir == 'asc' else 'asc', tab=tab, q=q, letter=letter) }}">
+              Cartão {% if sort_by == 'cartao' %}{{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}
+            </a>
+          </th>
+          <th>
+            <a href="{{ url_for('students.list_students', class_id=co.id, sort='nome', dir='desc' if sort_by == 'nome' and sort_dir == 'asc' else 'asc', tab=tab, q=q, letter=letter) }}">
+              Nome do Aluno {% if sort_by == 'nome' %}{{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}
+            </a>
+          </th>
+          <th style="width: 100px; text-align: center;">
+            <a href="{{ url_for('students.list_students', class_id=co.id, sort='avg', dir='desc' if sort_by == 'avg' and sort_dir == 'asc' else 'asc', tab=tab, q=q, letter=letter) }}">
+              Média {% if sort_by == 'avg' %}{{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}
+            </a>
+          </th>
+          <th style="width: 120px; text-align: center;">
+            <a href="{{ url_for('students.list_students', class_id=co.id, sort='freq', dir='desc' if sort_by == 'freq' and sort_dir == 'asc' else 'asc', tab=tab, q=q, letter=letter) }}">
+              Frequência {% if sort_by == 'freq' %}{{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}
+            </a>
+          </th>
+          <th style="width: 180px; text-align: center;">Situação</th>
+          <th style="width: 100px; text-align: center;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          {% set e = row.enrollment %}
+          <tr>
+            <td style="font-family: monospace;">{{ e.student.cartao }}</td>
+            <td>
+              <a href="{{ url_for('students.student_detail', class_id=co.id, student_id=e.student.id) }}" style="font-weight: 600; color: #FFF;">
+                {{ e.student.nome }}
+              </a>
+              {% if row.needed_grade is not None and row.needed_grade > 0 %}
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                  Precisa de <strong>{{ row.needed_grade|round(1) }}</strong> nas próximas provas para passar.
+                </div>
+              {% endif %}
+            </td>
+            <td style="text-align: center; font-weight: bold; color: var(--accent);">
+              {{ row.avg|round(1) if row.avg is not None else '—' }}
+            </td>
+            <td style="text-align: center; font-weight: 500;">
+              {{ row.freq|round(1) if row.freq is not None else '—' }}%
+            </td>
+            <td style="text-align: center;">
+              <!-- Badge with color toggle ability -->
+              <span class="badge" 
+                    :class="colorCoding ? 'badge-{{ STATUS_COLORS[row.status] }}' : 'badge-neutral'">
+                {{ STATUS_LABELS[row.status] }}
+              </span>
+            </td>
+            <td style="text-align: center;">
+              <form method="POST" action="{{ url_for('students.remove_student', class_id=co.id, student_id=e.student.id) }}" style="margin: 0;" onsubmit="return confirm('Deseja realmente remover este aluno? O histórico continuará acessível, mas ele não aparecerá nas tabelas ativas.')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary" style="min-height: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem; color: var(--danger); border-color: var(--border-color);">
+                  Remover
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">Nenhum aluno correspondente nesta visualização.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Manual Add Student Form -->
+  <div style="max-width: 600px; margin: 3rem 0; background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+    <h3 style="color: #FFF; margin-bottom: 1.25rem; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+      ➕ Adicionar Aluno Manualmente
+    </h3>
+    <form method="POST" action="{{ url_for('students.add_student', class_id=co.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; align-items: end;">
+        <div class="form-group" style="margin: 0;">
+          <label class="form-label" for="cartao">Cartão UFRGS</label>
+          <input type="text" id="cartao" name="cartao" class="form-control" placeholder="Ex: 00289409" required>
+        </div>
+        <div class="form-group" style="margin: 0;">
+          <label class="form-label" for="nome">Nome Completo</label>
+          <input type="text" id="nome" name="nome" class="form-control" placeholder="Nome do estudante" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-secondary" style="width: 100%; margin-top: 1rem; border-color: var(--accent); color: var(--accent);">Adicionar à Chamada</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

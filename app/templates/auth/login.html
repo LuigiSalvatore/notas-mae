@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Acesso — Notas & Frequência{% endblock %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 4rem auto; background-color: var(--bg-surface); padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+  <h2 style="color: #FFF; text-align: center; margin-bottom: 1.5rem;">Entrar na Plataforma</h2>
+
+  {% if error %}
+    <div class="alert alert-danger" style="font-size: 0.9rem; padding: 0.75rem 1rem;">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('auth.login') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    
+    <div class="form-group">
+      <label class="form-label" for="username">Usuário</label>
+      <input type="text" id="username" name="username" class="form-control" required autofocus>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="password">Senha</label>
+      <input type="password" id="password" name="password" class="form-control" required>
+    </div>
+
+    <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem; margin-bottom: 1.5rem;">
+      <input type="checkbox" id="remember_me" name="remember_me" style="width: 18px; height: 18px; cursor: pointer;">
+      <label for="remember_me" style="font-size: 0.9rem; color: var(--text-muted); cursor: pointer; user-select: none;">
+        Lembrar-me neste computador
+      </label>
+    </div>
+
+    <button type="submit" class="btn btn-primary" style="width: 100%;">Acessar Painel</button>
+  </form>
+</div>
+{% endblock %}

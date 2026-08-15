@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Chamada de Aula — {{ session.date|pt_date }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .student-att-row {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .student-info {
+    flex: 1;
+    min-width: 250px;
+  }
+  .att-actions-container {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .att-btn {
+    min-width: 100px;
+    height: 48px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    background-color: rgba(255,255,255,0.03);
+    color: var(--text-muted);
+    transition: all var(--transition-fast);
+  }
+  
+  /* State Colors */
+  .att-btn.present:hover, .att-btn.present.active {
+    background-color: var(--success);
+    color: #FFF;
+    border-color: var(--success);
+  }
+  .att-btn.absent:hover, .att-btn.absent.active {
+    background-color: var(--danger);
+    color: #FFF;
+    border-color: var(--danger);
+  }
+  .att-btn.justified:hover, .att-btn.justified.active {
+    background-color: var(--warning);
+    color: var(--text-dark);
+    border-color: var(--warning);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <div style="margin-bottom: 2rem;">
+    <a href="{{ url_for('attendance.sessions_list', class_id=co.id) }}" style="font-size: 0.9rem; color: var(--text-muted);">&larr; Voltar para a lista de aulas</a>
+    <h1 style="color: #FFF; font-size: 1.5rem; font-weight: 700; margin-top: 0.5rem;">
+      📋 Chamada: {{ session.date|pt_date }}
+    </h1>
+    {% if session.label %}
+      <p style="color: var(--accent); font-size: 0.95rem; margin-top: 0.25rem;">🏷️ {{ session.label }}</p>
+    {% endif %}
+  </div>
+
+  <!-- Student stacked list (mobile first) -->
+  <div class="attendance-grid">
+    {% for enrollment in enrollments %}
+      {% set record = record_map[enrollment.id] %}
+      <div class="student-att-row" id="row-{{ enrollment.id }}">
+        <div class="student-info">
+          <div style="font-size: 1.1rem; font-weight: 600; color: #FFF;">
+            {{ enrollment.student.nome }}
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; display: flex; justify-content: space-between;">
+            <span>Cartão: {{ enrollment.student.cartao }}</span>
+            <span>Freq. Acumulada: <strong id="freq-{{ enrollment.id }}">{{ record.enrollment.attendance_records|compute_student_freq|round(1) if record.enrollment.attendance_records|compute_student_freq is not None else '—' }}%</strong></span>
+          </div>
+        </div>
+
+        <div class="att-actions-container" data-enrollment-id="{{ enrollment.id }}">
+          <button class="att-btn present {% if record.status == 'present' %}active{% endif %}" onclick="markStudent({{ enrollment.id }}, 'present')">
+            Presente
+          </button>
+          <button class="att-btn absent {% if record.status == 'absent' %}active{% endif %}" onclick="markStudent({{ enrollment.id }}, 'absent')">
+            Ausente
+          </button>
+          <button class="att-btn justified {% if record.status == 'justified_absence' %}active{% endif %}" onclick="markStudent({{ enrollment.id }}, 'justified_absence')">
+            Justificada
+          </button>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function markStudent(enrollmentId, status) {
+    const classId = "{{ co.id }}";
+    const sessionId = "{{ session.id }}";
+    const container = document.querySelector(`[data-enrollment-id="${enrollmentId}"]`);
+    const buttons = container.querySelectorAll('.att-btn');
+    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    // Optimistic UI updates
+    buttons.forEach(btn => btn.classList.remove('active'));
+    const clickedBtn = container.querySelector(`.${status === 'justified_absence' ? 'justified' : status}`);
+    if (clickedBtn) clickedBtn.classList.add('active');
+
+    fetch(`/class/${classId}/attendance/${sessionId}/mark`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': token
+      },
+      body: JSON.stringify({
+        enrollment_id: enrollmentId,
+        status: status
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.ok) {
+        // Update accumulative frequency display
+        const freqLabel = document.getElementById(`freq-${enrollmentId}`);
+        if (freqLabel) {
+          freqLabel.textContent = data.freq !== null ? data.freq.toFixed(1) + '%' : '—';
+        }
+        if (window.refreshUndoPanel) {
+          window.refreshUndoPanel();
+        }
+      } else {
+        alert('Erro ao marcar presença: ' + (data.error || 'Erro desconhecido'));
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Erro ao conectar com o servidor.');
+    });
+  }
+</script>
+{% endblock %}

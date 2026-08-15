@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Painel de Controle — Notas & Frequência{% endblock %}
+
+{% block content %}
+<div x-data="{ showArchived: false }">
+  <!-- Dashboard Header Actions -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="color: #FFF; font-size: 1.75rem; font-weight: 700;">Turmas Ativas</h1>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Selecione uma turma para editar notas ou gerenciar frequência.</p>
+    </div>
+    
+    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+      <label style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9rem; cursor: pointer; user-select: none; border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: var(--radius-md); background-color: var(--bg-surface);">
+        <input type="checkbox" x-model="showArchived" style="width: 16px; height: 16px; cursor: pointer;">
+        Mostrar turmas arquivadas
+      </label>
+
+      <a href="{{ url_for('classes.import_pdf_new') }}" class="btn btn-secondary">
+        📥 Importar PDF Diário
+      </a>
+
+      <a href="{{ url_for('classes.new_class') }}" class="btn btn-primary">
+        ➕ Criar Nova Turma
+      </a>
+    </div>
+  </div>
+
+  <!-- Periods loop -->
+  <div style="display: flex; flex-direction: column; gap: 2.5rem;">
+    {% for period, offerings in periods.items() %}
+    <div x-show="{% if offerings|selectattr('archived', 'equalto', true)|list|length == offerings|length %}showArchived{% else %}true{% endif %}">
+      <h2 style="color: var(--accent); font-size: 1.25rem; font-weight: 600; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+        Período Letivo: {{ period }}
+      </h2>
+
+      <div class="card-grid">
+        {% for co in offerings %}
+        <div class="card" x-show="showArchived || !{{ 'true' if co.archived else 'false' }}">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+              <span class="card-title">{{ co.subject_name }}</span>
+              {% if co.archived %}
+                <span class="badge badge-neutral">Arquivada</span>
+              {% endif %}
+            </div>
+            
+            <div class="card-meta">
+              <span><strong>Turma:</strong> {{ co.turma or '—' }}</span>
+              <span><strong>Créditos:</strong> {{ co.creditos or '—' }} | <strong>Nível:</strong> {{ co.nivel or '—' }}</span>
+              <span><strong>Professores:</strong> {{ co.professores or '—' }}</span>
+              <span><strong>Alunos Ativos:</strong> {{ co.active_enrollments|length }}</span>
+              {% set role = co.get_role_for(current_user) %}
+              <span><strong>Meu Acesso:</strong> 
+                {% if role == 'owner' %}
+                  <span style="color: var(--accent); font-weight: 600;">Proprietário</span>
+                {% elif role == 'collaborator' %}
+                  <span style="color: var(--text-muted);">Colaborador</span>
+                {% else %}
+                  <span style="color: var(--text-muted);">Administrador Geral</span>
+                {% endif %}
+              </span>
+            </div>
+          </div>
+
+          <div class="card-footer">
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              {% if risk_map.get(co.id) %}
+                {% set r = risk_map[co.id] %}
+                {% if r.failing > 0 %}
+                  <span class="badge badge-danger" title="Reprovados">{{ r.failing }} Reprovado(s)</span>
+                {% endif %}
+                {% if r.at_risk > 0 %}
+                  <span class="badge badge-warning" title="Em risco">{{ r.at_risk }} Em Risco</span>
+                {% endif %}
+                {% if r.failing == 0 and r.at_risk == 0 %}
+                  <span class="badge badge-success">Estável</span>
+                {% endif %}
+              {% endif %}
+            </div>
+
+            <a href="{{ url_for('students.list_students', class_id=co.id) }}" class="btn btn-primary" style="min-height: auto; padding: 0.4rem 1rem; font-size: 0.85rem;">
+              Acessar
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 4rem 2rem; background-color: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+      <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 1.5rem;">Nenhuma turma encontrada.</p>
+      <a href="{{ url_for('classes.import_pdf_new') }}" class="btn btn-primary">Importar Turma via PDF da Universidade</a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

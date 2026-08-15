@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block title %}Configurações do Sistema — Notas & Frequência{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;" x-data="{ smtpUseTls: '{{ '1' if teacher.smtp_use_tls else '0' }}', backupHistory: [] }" x-init="
+  fetch('/backup/jobs').then(res => res.json()).then(data => backupHistory = data)
+">
+  <div style="margin-bottom: 2rem;">
+    <h1 style="color: #FFF; font-size: 1.75rem; font-weight: 700;">⚙️ Configurações do Sistema</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Configure backups por e-mail, SMTP, valores padrão e altere senhas.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+    <!-- Column 1: SMTP Configs -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+      <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+        <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; font-size: 1.15rem;">
+          📧 Envio de Backup (SMTP)
+        </h3>
+
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="save_smtp">
+
+          <div class="form-group">
+            <label class="form-label" for="backup_email">E-mail de Destino do Backup *</label>
+            <input type="email" id="backup_email" name="backup_email" class="form-control" value="{{ teacher.backup_email or '' }}" placeholder="Ex: professores@ufrgs.br" required>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">E-mail que receberá as planilhas e PDFs das chamadas.</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="smtp_host">Servidor SMTP</label>
+            <input type="text" id="smtp_host" name="smtp_host" class="form-control" value="{{ teacher.smtp_host or '' }}" placeholder="smtp.gmail.com">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="smtp_port">Porta SMTP</label>
+              <input type="number" id="smtp_port" name="smtp_port" class="form-control" value="{{ teacher.smtp_port or 465 }}">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="smtp_use_tls">Segurança</label>
+              <select id="smtp_use_tls" name="smtp_use_tls" class="form-control" x-model="smtpUseTls">
+                <option value="1">SSL/TLS (Porta 465 recomendada)</option>
+                <option value="0">STARTTLS (Porta 587 recomendada)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="smtp_user">Usuário SMTP / Login</label>
+            <input type="text" id="smtp_user" name="smtp_user" class="form-control" value="{{ teacher.smtp_user or '' }}" placeholder="Ex: meuemail@gmail.com">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="smtp_password">Senha SMTP / Token de App</label>
+            <input type="password" id="smtp_password" name="smtp_password" class="form-control" value="{{ decrypted_password }}" placeholder="••••••••••••••••">
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Para Gmail, utilize uma <strong>Senha de App</strong> dedicada, não a senha principal da sua conta Google.
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="smtp_from">Remetente Opcional (Email do "De:")</label>
+            <input type="text" id="smtp_from" name="smtp_from" class="form-control" value="{{ teacher.smtp_from or '' }}" placeholder="Ex: Notas <meuemail@gmail.com>">
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Configurações SMTP</button>
+        </form>
+
+        <!-- Test button -->
+        <form method="POST" style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="test_smtp">
+          <div class="form-group">
+            <label class="form-label" for="test_email">Enviar E-mail de Teste para:</label>
+            <input type="email" id="test_email" name="test_email" class="form-control" value="{{ teacher.backup_email or '' }}" placeholder="email@teste.com">
+          </div>
+          <button type="submit" class="btn btn-secondary" style="width: 100%;">Testar Conexão SMTP</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Column 2: System Defaults & password & Export & Profile -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+      <!-- Perfil do Professor -->
+      <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+        <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; font-size: 1.15rem;">
+          👤 Meu Perfil
+        </h3>
+        
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="save_profile">
+
+          <div class="form-group">
+            <label class="form-label" for="username_display">Nome de Usuário (@)</label>
+            <input type="text" id="username_display" class="form-control" value="{{ teacher.username }}" disabled style="opacity: 0.7;">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="display_name">Nome de Exibição</label>
+            <input type="text" id="display_name" name="display_name" class="form-control" value="{{ teacher.display_name or '' }}" placeholder="Ex: Profª. Maria Silva" required>
+          </div>
+          
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Atualizar Perfil</button>
+        </form>
+      </div>
+
+      <!-- General Defaults -->
+      <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+        <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; font-size: 1.15rem;">
+          📋 Valores Padrão do Sistema
+        </h3>
+        
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="save_defaults">
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="default_min_attendance_pct">Frequência (%)</label>
+              <input type="number" step="0.1" id="default_min_attendance_pct" name="default_min_attendance_pct" class="form-control" value="{{ teacher.default_min_attendance_pct }}" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="default_min_avg_grade">Média Mínima</label>
+              <input type="number" step="0.1" id="default_min_avg_grade" name="default_min_avg_grade" class="form-control" value="{{ teacher.default_min_avg_grade }}" required>
+            </div>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Estes limites serão atribuídos por padrão a todas as novas turmas criadas.</p>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Valores Padrão</button>
+        </form>
+      </div>
+
+      <!-- Change password -->
+      <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+        <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; font-size: 1.15rem;">
+          🔒 Alterar Senha de Acesso
+        </h3>
+
+        <form method="POST" action="{{ url_for('auth.change_password') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <div class="form-group">
+            <label class="form-label" for="current_password">Senha Atual</label>
+            <input type="password" id="current_password" name="current_password" class="form-control" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="new_password">Nova Senha</label>
+            <input type="password" id="new_password" name="new_password" class="form-control" required minlength="8">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="confirm_password">Confirmar Nova Senha</label>
+            <input type="password" id="confirm_password" name="confirm_password" class="form-control" required minlength="8">
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Alterar Senha de Acesso</button>
+        </form>
+      </div>
+
+      <!-- Full Data Export -->
+      <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+        <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; font-size: 1.15rem;">
+          💾 Backup Manual de Segurança
+        </h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+          Baixe uma planilha Excel consolidando todas as turmas, alunos, notas e diários de frequências armazenados na plataforma de uma só vez.
+        </p>
+        <a href="{{ url_for('classes.export_full_xlsx') }}" class="btn btn-secondary" style="width: 100%; border-color: var(--success); color: var(--success);">
+          📥 Exportar Tudo para Excel (.xlsx)
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {% if teacher.is_super_admin %}
+  <!-- Teacher Management panel (Super Admin only) -->
+  <div style="margin-top: 3rem; background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);" x-data="{ showAddTeacher: false, resetPwTeacherId: null }">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+      <h3 style="color: #FFF; font-size: 1.15rem; margin: 0;">
+        👥 Gerenciamento de Professores (Administrador)
+      </h3>
+      <button class="btn btn-secondary" style="min-height: auto; padding: 0.4rem 1rem; font-size: 0.85rem;" @click="showAddTeacher = !showAddTeacher">
+        <span x-show="!showAddTeacher">➕ Cadastrar Novo Professor</span>
+        <span x-show="showAddTeacher">Fechar Formulário</span>
+      </button>
+    </div>
+
+    <!-- Form to Add Teacher -->
+    <div x-show="showAddTeacher" style="background-color: rgba(0,0,0,0.2); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+      <h4 style="color: #FFF; font-size: 1rem; margin-bottom: 1rem;">➕ Novo Professor</h4>
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="add_teacher">
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label" for="new_username">Nome de Usuário (@) *</label>
+            <input type="text" id="new_username" name="username" class="form-control" placeholder="joao_silva" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="new_display_name">Nome de Exibição</label>
+            <input type="text" id="new_display_name" name="display_name" class="form-control" placeholder="Prof. João Silva">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label" for="new_password">Senha Inicial *</label>
+            <input type="password" id="new_password" name="password" class="form-control" placeholder="Mínimo 8 caracteres" required minlength="8">
+          </div>
+          <div class="form-group" style="display: flex; align-items: center; margin-top: 1.5rem;">
+            <label style="display: inline-flex; align-items: center; gap: 0.5rem; color: #FFF; font-size: 0.9rem; cursor: pointer; user-select: none;">
+              <input type="checkbox" name="is_super_admin" value="1" style="width: 18px; height: 18px; cursor: pointer;">
+              Dar privilégios de Administrador Geral
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem;">Cadastrar Professor</button>
+      </form>
+    </div>
+
+    <!-- Teacher list table -->
+    <div class="grade-table-container">
+      <table class="grade-table">
+        <thead>
+          <tr>
+            <th>Nome / Usuário</th>
+            <th style="width: 150px; text-align: center;">Administrador</th>
+            <th style="width: 150px; text-align: center;">Status</th>
+            <th style="width: 250px; text-align: center;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in all_teachers %}
+          <tr>
+            <td>
+              <span style="color: #FFF; font-weight: 500;">{{ t.display_name }}</span>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">@{{ t.username }}</div>
+            </td>
+            <td style="text-align: center;">
+              {% if t.is_super_admin %}
+                <span class="badge badge-success">Sim</span>
+              {% else %}
+                <span class="badge badge-neutral">Não</span>
+              {% endif %}
+            </td>
+            <td style="text-align: center;">
+              {% if t.is_active %}
+                <span class="badge badge-success">Ativo</span>
+              {% else %}
+                <span class="badge badge-danger">Inativo</span>
+              {% endif %}
+            </td>
+            <td style="text-align: center;">
+              <div style="display: flex; gap: 0.5rem; justify-content: center; align-items: center;">
+                <!-- Password Reset Modal Toggle -->
+                <button class="btn btn-secondary" style="min-height: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem;" @click="resetPwTeacherId = (resetPwTeacherId === {{ t.id }} ? null : {{ t.id }})">
+                  Chavear Senha
+                </button>
+
+                {% if t.id != teacher.id %}
+                <!-- Toggle Super Admin -->
+                <form method="POST" style="margin: 0;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="action" value="toggle_super_admin">
+                  <input type="hidden" name="teacher_id" value="{{ t.id }}">
+                  <button type="submit" class="btn btn-secondary" style="min-height: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                    Admin
+                  </button>
+                </form>
+
+                <!-- Toggle Active -->
+                <form method="POST" style="margin: 0;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="action" value="toggle_active">
+                  <input type="hidden" name="teacher_id" value="{{ t.id }}">
+                  <button type="submit" class="btn btn-secondary" style="min-height: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: {% if t.is_active %}var(--danger){% else %}var(--success){% endif %}; color: {% if t.is_active %}var(--danger){% else %}var(--success){% endif %};">
+                    {% if t.is_active %}Desativar{% else %}Ativar{% endif %}
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+
+              <!-- Password Reset Form inline -->
+              <div x-show="resetPwTeacherId === {{ t.id }}" style="margin-top: 0.75rem; padding: 0.75rem; background-color: rgba(0,0,0,0.3); border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: left;">
+                <form method="POST">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="action" value="reset_teacher_password">
+                  <input type="hidden" name="teacher_id" value="{{ t.id }}">
+                  <div class="form-group" style="margin-bottom: 0.5rem;">
+                    <label class="form-label" style="font-size: 0.75rem;">Nova Senha para {{ t.username }}</label>
+                    <input type="password" name="new_password" class="form-control" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" required minlength="8">
+                  </div>
+                  <button type="submit" class="btn btn-primary" style="min-height: auto; padding: 0.25rem 0.5rem; font-size: 0.75rem; width: 100%;">Salvar Senha</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Backup history status log -->
+  <div style="margin-top: 3rem; background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+    <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; font-size: 1.15rem;">
+      📊 Registro de Backups Automatizados (Últimos 50)
+    </h3>
+    
+    <div class="grade-table-container" style="max-height: 300px; overflow-y: auto;">
+      <table class="grade-table">
+        <thead>
+          <tr>
+            <th style="width: 150px;">Data / Hora</th>
+            <th>Turma</th>
+            <th style="width: 150px;">Gatilho</th>
+            <th style="width: 100px; text-align: center;">Tamanho</th>
+            <th style="width: 120px; text-align: center;">Envio</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="job in backupHistory" :key="job.id">
+            <tr>
+              <td style="font-family: monospace;" x-text="job.timestamp"></td>
+              <td x-text="job.class" style="color: #FFF; font-weight: 500;"></td>
+              <td x-text="job.trigger === 'grade_session_end' ? 'Fim de Sessão' : (job.trigger === 'manual' ? 'Manual' : 'Agendado')"></td>
+              <td style="text-align: center;" x-text="job.size_kb + ' KB'"></td>
+              <td style="text-align: center;">
+                <span class="badge" :class="job.status === 'sent' ? 'badge-success' : 'badge-danger'" x-text="job.status === 'sent' ? 'Enviado' : 'Falhou'"></span>
+              </td>
+            </tr>
+          </template>
+          <tr x-show="backupHistory.length === 0">
+            <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-muted);">Nenhum backup registrado no sistema até o momento.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

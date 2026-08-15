@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmar Importação de Múltiplas Turmas{% endblock %}
+
+{% block content %}
+<div style="max-width: 860px; margin: 2rem auto;">
+
+  <h2 style="color: #FFF; margin-bottom: 0.5rem;">
+    📚 PDF com Múltiplas Turmas Detectado
+  </h2>
+  <p style="color: var(--text-muted); margin-bottom: 2rem;">
+    O PDF contém <strong style="color: var(--accent);">{{ classes_info | length }} turma(s)</strong>.
+    Revise abaixo e confirme para criar todas de uma vez.
+  </p>
+
+  <!-- Summary table -->
+  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 2rem;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+      <thead>
+        <tr style="background: rgba(255,255,255,0.05);">
+          <th style="padding: 0.75rem 1rem; text-align: left; color: var(--text-muted); font-weight: 600;">#</th>
+          <th style="padding: 0.75rem 1rem; text-align: left; color: var(--text-muted); font-weight: 600;">Disciplina</th>
+          <th style="padding: 0.75rem 1rem; text-align: center; color: var(--text-muted); font-weight: 600;">Turma</th>
+          <th style="padding: 0.75rem 1rem; text-align: center; color: var(--text-muted); font-weight: 600;">Período</th>
+          <th style="padding: 0.75rem 1rem; text-align: center; color: var(--text-muted); font-weight: 600;">Créditos</th>
+          <th style="padding: 0.75rem 1rem; text-align: center; color: var(--text-muted); font-weight: 600;">Alunos</th>
+          <th style="padding: 0.75rem 1rem; text-align: center; color: var(--text-muted); font-weight: 600;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ci in classes_info %}
+        <tr style="border-top: 1px solid var(--border-color);">
+          <td style="padding: 0.75rem 1rem; color: var(--text-muted);">{{ loop.index }}</td>
+          <td style="padding: 0.75rem 1rem; color: #FFF; font-weight: 500;">{{ ci.header.subject_name }}</td>
+          <td style="padding: 0.75rem 1rem; text-align: center; color: #FFF;">{{ ci.header.turma }}</td>
+          <td style="padding: 0.75rem 1rem; text-align: center; color: #FFF;">{{ ci.header.periodo_letivo }}</td>
+          <td style="padding: 0.75rem 1rem; text-align: center; color: #FFF;">{{ ci.header.creditos or '—' }}</td>
+          <td style="padding: 0.75rem 1rem; text-align: center;">
+            <span style="background: rgba(99,102,241,0.15); color: var(--accent); font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px;">
+              {{ ci.student_count }}
+            </span>
+          </td>
+          <td style="padding: 0.75rem 1rem; text-align: center;">
+            {% if ci.existing_id %}
+              <span style="background: rgba(234,179,8,0.15); color: #facc15; font-size: 0.8rem; padding: 0.2rem 0.6rem; border-radius: 999px; white-space: nowrap;">
+                ⚡ Já existe — atualizar
+              </span>
+            {% else %}
+              <span style="background: rgba(34,197,94,0.15); color: #4ade80; font-size: 0.8rem; padding: 0.2rem 0.6rem; border-radius: 999px; white-space: nowrap;">
+                🆕 Nova turma
+              </span>
+            {% endif %}
+          </td>
+        </tr>
+        <!-- Details row -->
+        <tr style="border-top: 1px solid rgba(255,255,255,0.04); background: rgba(0,0,0,0.15);">
+          <td></td>
+          <td colspan="6" style="padding: 0.4rem 1rem 0.75rem; color: var(--text-muted); font-size: 0.82rem;">
+            Professor(es): {{ ci.header.professores or '—' }}
+            {% if ci.existing_id %}
+              &nbsp;·&nbsp; Será mesclada com a turma existente (alunos novos serão adicionados, sem remover os que já estão).
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Totals -->
+  {% set total_students = classes_info | sum(attribute='student_count') %}
+  {% set new_classes = classes_info | selectattr('existing_id', 'none') | list | length %}
+  {% set update_classes = classes_info | length - new_classes %}
+
+  <div style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 140px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+      <div style="font-size: 2rem; font-weight: 700; color: var(--accent);">{{ total_students }}</div>
+      <div style="font-size: 0.8rem; color: var(--text-muted);">Alunos totais</div>
+    </div>
+    <div style="flex: 1; min-width: 140px; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+      <div style="font-size: 2rem; font-weight: 700; color: #4ade80;">{{ new_classes }}</div>
+      <div style="font-size: 0.8rem; color: var(--text-muted);">Turmas novas</div>
+    </div>
+    {% if update_classes > 0 %}
+    <div style="flex: 1; min-width: 140px; background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3); border-radius: var(--radius-md); padding: 1rem; text-align: center;">
+      <div style="font-size: 2rem; font-weight: 700; color: #facc15;">{{ update_classes }}</div>
+      <div style="font-size: 0.8rem; color: var(--text-muted);">Turmas a atualizar</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Action form -->
+  <form method="POST" action="{{ url_for('classes.import_pdf_new') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="create_and_import_multi">
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+      <a href="{{ url_for('classes.import_pdf_new') }}" class="btn btn-secondary">Cancelar e Voltar</a>
+      <button type="submit" class="btn btn-primary" style="font-size: 1rem; padding: 0.6rem 1.5rem;">
+        ✅ Confirmar e Importar Todas as Turmas
+      </button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

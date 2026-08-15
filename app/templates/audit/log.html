@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Logs de Ações — {{ co.subject_name }}{% endblock %}
+
+{% block content %}
+<div>
+  <!-- Class Context Header & Tabs -->
+  <div style="margin-bottom: 2rem;">
+    <h1 style="color: #FFF; font-size: 1.75rem; font-weight: 700;">{{ co.subject_name }} (Turma {{ co.turma }})</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Período Letivo: {{ co.periodo_letivo }}</p>
+
+    <!-- Sub-navigation tabs -->
+    <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1px;">
+      <a href="{{ url_for('students.list_students', class_id=co.id) }}" class="nav-item">Alunos</a>
+      <a href="{{ url_for('grades.grade_grid', class_id=co.id) }}" class="nav-item">Notas</a>
+      <a href="{{ url_for('attendance.sessions_list', class_id=co.id) }}" class="nav-item">Presenças</a>
+      <a href="{{ url_for('audit.action_log', class_id=co.id) }}" class="nav-item active">Logs / Histórico</a>
+      <a href="{{ url_for('classes.class_settings', class_id=co.id) }}" class="nav-item">Configurações</a>
+    </div>
+  </div>
+
+  <!-- Filter Log Options -->
+  <div style="background-color: var(--bg-surface); padding: 1.25rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: 2rem;">
+    <h3 style="color: #FFF; font-size: 1.1rem; margin-bottom: 1rem;">Filtrar Histórico de Alterações</h3>
+    
+    <form method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 1rem; align-items: end; margin: 0;">
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label" for="type">Tipo de Alteração</label>
+        <select id="type" name="type" class="form-control">
+          <option value="">Todos</option>
+          {% for code, label in action_types %}
+            <option value="{{ code }}" {% if active_type == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label" for="date_from">A partir de</label>
+        <input type="date" id="date_from" name="date_from" value="{{ date_from }}" class="form-control">
+      </div>
+
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label" for="date_to">Até</label>
+        <input type="date" id="date_to" name="date_to" value="{{ date_to }}" class="form-control">
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <button type="submit" class="btn btn-primary" style="min-height: 38px; padding: 0 1.5rem;">Filtrar</button>
+        {% if active_type or date_from or date_to %}
+          <a href="{{ url_for('audit.action_log', class_id=co.id) }}" class="btn btn-secondary" style="min-height: 38px; padding: 0.5rem 1rem; display: flex; align-items: center;">Limpar</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Logs Table -->
+  <div class="grade-table-container">
+    <table class="grade-table">
+      <thead>
+        <tr>
+          <th style="width: 150px;">Data / Hora</th>
+          <th style="width: 150px;">Tipo</th>
+          <th>Descrição da Alteração</th>
+          <th style="width: 100px; text-align: center;">Revertida</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+          <tr>
+            <td style="color: var(--accent); font-family: monospace;">
+              {{ log.timestamp|pt_datetime }}
+            </td>
+            <td>
+              {% set active_label = 'Sistema' %}
+              {% for code, label in action_types %}
+                {% if log.action_type == code %}
+                  {% set active_label = label %}
+                {% endif %}
+              {% endfor %}
+              <span class="badge badge-neutral">{{ active_label }}</span>
+            </td>
+            <td style="color: #FFF; font-weight: 500;">
+              {{ log.description }}
+            </td>
+            <td style="text-align: center;">
+              {% if log.reverted %}
+                <span class="badge badge-success">Sim</span>
+              {% else %}
+                <span style="color: var(--text-muted);">Não</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 3rem; color: var(--text-muted);">Nenhum log encontrado para os critérios de busca.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

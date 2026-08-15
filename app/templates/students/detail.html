@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Aluno — {{ student.nome }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+  <div style="margin-bottom: 2rem;">
+    <a href="{{ url_for('students.list_students', class_id=co.id) }}" style="font-size: 0.9rem; color: var(--text-muted);">&larr; Voltar para a lista</a>
+    <h1 style="color: #FFF; font-size: 1.75rem; font-weight: 700; margin-top: 0.5rem;">
+      👤 {{ student.nome }}
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Cartão: {{ student.cartao }} | Classe: {{ co.subject_name }}</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: start;">
+    <div>
+      <!-- Grades Profile -->
+      <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: 2rem;">
+        <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Notas Detalhadas</h3>
+        
+        <div class="grade-table-container">
+          <table class="grade-table">
+            <thead>
+              <tr>
+                <th>Avaliação</th>
+                <th style="width: 150px; text-align: center;">Escala</th>
+                <th style="width: 150px; text-align: center;">Status / Nota</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for comp in components %}
+                {% set g = gmap.get(comp.id) %}
+                <tr>
+                  <td>
+                    <strong>{{ comp.name }}</strong>
+                    {% if comp.covers_component %}
+                      <div style="font-size: 0.75rem; color: var(--warning);">Substitutiva de: {{ comp.covers_component.name }}</div>
+                    {% endif %}
+                  </td>
+                  <td style="text-align: center; color: var(--text-muted);">
+                    {{ 'Conceito (A-F)' if comp.scale_type == 'letter_A_F' else 'Numérica' }}
+                  </td>
+                  <td style="text-align: center;">
+                    {% if g %}
+                      {% if g.status == 'missed_justified' %}
+                        <span class="badge badge-warning">Falta Justificada (FJ)</span>
+                      {% elif g.status == 'missed_unjustified' %}
+                        <span class="badge badge-danger">Falta Injustificada (FI)</span>
+                      {% else %}
+                        <span style="font-weight: 600; color: #FFF;">
+                          {{ g.value|format_grade(comp.scale_type) if g.value is not None else '—' }}
+                        </span>
+                      {% endif %}
+                    {% else %}
+                      <span style="color: var(--text-muted);">—</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr style="background-color: rgba(255,255,255,0.03); font-weight: bold;">
+                <td>Média Calculada</td>
+                <td></td>
+                <td style="text-align: center; color: var(--accent); font-size: 1.1rem;">
+                  {{ avg|round(2) if avg is not None else '—' }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Attendance Records Profile -->
+      <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+        <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Registro de Frequência</h3>
+        
+        <div class="grade-table-container">
+          <table class="grade-table">
+            <thead>
+              <tr>
+                <th>Data da Aula</th>
+                <th>Rótulo</th>
+                <th style="width: 150px; text-align: center;">Registro</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rec in recs %}
+                <tr>
+                  <td>{{ rec.session.date|pt_date }}</td>
+                  <td style="color: var(--text-muted);">{{ rec.session.label or '—' }}</td>
+                  <td style="text-align: center;">
+                    {% if rec.status == 'present' %}
+                      <span class="badge badge-success">Presente</span>
+                    {% elif rec.status == 'absent' %}
+                      <span class="badge badge-danger">Ausente</span>
+                    {% elif rec.status == 'justified_absence' %}
+                      <span class="badge badge-warning">Justificada</span>
+                    {% else %}
+                      <span class="badge badge-neutral">Não Marcada</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhuma aula registrada ainda.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr style="background-color: rgba(255,255,255,0.03); font-weight: bold;">
+                <td>Frequência Acumulada</td>
+                <td></td>
+                <td style="text-align: center; color: var(--accent); font-size: 1.1rem;">
+                  {{ freq|round(1) if freq is not None else '—' }}%
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar Profile Actions / Notes -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+      <!-- Status Box -->
+      <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color); text-align: center;">
+        <span class="form-label" style="text-align: center;">Situação Atual</span>
+        <div style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+          <span class="badge badge-{{ STATUS_COLORS[status] }}" style="font-size: 1rem; padding: 0.5rem 1rem;">
+            {{ STATUS_LABELS[status] }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Notes Form -->
+      <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+        <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; font-size: 1.1rem;">📝 Observações</h3>
+        <form method="POST" action="{{ url_for('students.update_notes', class_id=co.id, student_id=student.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="form-group">
+            <textarea name="notes" class="form-control" rows="5" placeholder="Digite notas internas sobre o aluno (atendimento, justificativas, etc.)">{{ student.notes or '' }}</textarea>
+          </div>
+          <button type="submit" class="btn btn-secondary" style="width: 100%;">Salvar Observações</button>
+        </form>
+      </div>
+
+      <!-- Audit History -->
+      <div style="background-color: var(--bg-surface); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+        <h3 style="color: #FFF; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; font-size: 1.1rem;">Logs Recentes</h3>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto; font-size: 0.8rem;">
+          {% for h in history %}
+            <div style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.4rem;">
+              <span style="color: var(--accent);">{{ h.timestamp|pt_datetime }}</span><br>
+              <span style="color: var(--text-main);">{{ h.description }}</span>
+            </div>
+          {% else %}
+            <span style="color: var(--text-muted); font-style: italic;">Sem alterações registradas.</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
