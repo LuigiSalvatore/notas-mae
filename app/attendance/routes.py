@@ -144,12 +144,20 @@ def session_detail(class_id, session_id):
             record_map[enrollment.id] = r
     db.session.commit()
 
+    # Pre-compute accumulated frequency per enrollment so the template doesn't
+    # need to call compute_student_freq as a filter (it's a global, not a filter).
+    freq_map = {}
+    for enrollment in enrollments:
+        all_records = list(enrollment.attendance_records)
+        freq_map[enrollment.id] = compute_student_freq(all_records)
+
     return render_template(
         "attendance/session.html",
         co=co,
         session=session_obj,
         enrollments=enrollments,
         record_map=record_map,
+        freq_map=freq_map,
     )
 
 
