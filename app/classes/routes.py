@@ -4,6 +4,8 @@ Classes blueprint — class CRUD, PDF import, Excel import/export, settings.
 
 import io
 import json
+import uuid
+from pathlib import Path
 from datetime import datetime
 
 from flask import (
@@ -28,6 +30,25 @@ classes_bp = Blueprint("classes", __name__, url_prefix="/class")
 # ─────────────────────────────────────────────────────────────────────────────
 # Helper
 # ─────────────────────────────────────────────────────────────────────────────
+
+def _save_temp_pdf(file_bytes: bytes) -> str:
+    temp_dir = Path(current_app.instance_path) / "temp_pdfs"
+    temp_dir.mkdir(exist_ok=True)
+    file_id = str(uuid.uuid4())
+    (temp_dir / f"{file_id}.pdf").write_bytes(file_bytes)
+    return file_id
+
+def _load_temp_pdf(file_id: str) -> bytes | None:
+    if not file_id: return None
+    temp_file = Path(current_app.instance_path) / "temp_pdfs" / f"{file_id}.pdf"
+    if temp_file.exists():
+        return temp_file.read_bytes()
+    return None
+
+def _cleanup_temp_pdf(file_id: str):
+    if not file_id: return
+    temp_file = Path(current_app.instance_path) / "temp_pdfs" / f"{file_id}.pdf"
+    temp_file.unlink(missing_ok=True)
 
 def _get_class_or_404(class_id: int) -> ClassOffering:
     return get_accessible_class(class_id)
@@ -293,19 +314,8 @@ def import_pdf_upload(class_id):
 
         # Store parsed data in session for the confirm step
         from flask import session as flask_session
-        flask_session["import_pdf_header"]   = {
-            "subject_name":   result.header.subject_name,
-            "turma":          result.header.turma,
-            "periodo_letivo": result.header.periodo_letivo,
-            "creditos":       result.header.creditos,
-            "nivel":          result.header.nivel,
-            "professores":    result.header.professores,
-            "department":     result.header.department,
-        }
-        flask_session["import_pdf_students"] = [
-            {"seq": s.seq, "aluno_type": s.aluno_type, "cartao": s.cartao, "nome": s.nome}
-            for s in result.students
-        ]
+        flask_session["temp_pdf_id"] = _save_temp_pdf(file_bytes)
+        flask_session["temp_pdf_password"] = password
         flask_session["import_pdf_class_id"] = class_id
 
         return render_template(
@@ -328,10 +338,15 @@ def import_pdf_confirm(class_id):
     from flask import session as flask_session
     co = _get_class_or_404(class_id)
 
-    students_data = flask_session.get("import_pdf_students", [])
-    if not students_data:
+    file_id = flask_session.get("temp_pdf_id")
+    file_bytes = _load_temp_pdf(file_id)
+    if not file_bytes:
         flash("Sessão expirada. Faça o upload novamente.", "warning")
         return redirect(url_for("classes.import_pdf_upload", class_id=class_id))
+        
+    password = flask_session.get("temp_pdf_password", "")
+    result = parse_pdf(file_bytes, password=password)
+    students_data = [{"seq": s.seq, "aluno_type": s.aluno_type, "cartao": s.cartao, "nome": s.nome} for s in result.students]
 
     added = 0
     removed = 0
@@ -380,8 +395,9 @@ def import_pdf_confirm(class_id):
     )
     db.session.commit()
 
-    flask_session.pop("import_pdf_students", None)
-    flask_session.pop("import_pdf_header",   None)
+    _cleanup_temp_pdf(file_id)
+    flask_session.pop("temp_pdf_id", None)
+    flask_session.pop("temp_pdf_password", None)
 
     flash(f"Importação concluída: {added} aluno(s) adicionado(s), {removed} removido(s).", "success")
     return redirect(url_for("students.list_students", class_id=class_id))
@@ -453,7 +469,8 @@ def import_pdf_new():
                         "existing_name": str(matched_co) if matched_co else None,
                     })
 
-                flask_session["import_pdf_multi"] = classes_info
+                flask_session["temp_pdf_id"] = _save_temp_pdf(file_bytes)
+                flask_session["temp_pdf_password"] = password
                 return render_template(
                     "classes/import_pdf_multi_confirm.html",
                     classes_info=classes_info,
@@ -469,19 +486,8 @@ def import_pdf_new():
                 ClassOffering.periodo_letivo == h.periodo_letivo,
             ).first()
 
-            flask_session["import_pdf_students"] = [
-                {"seq": s.seq, "aluno_type": s.aluno_type, "cartao": s.cartao, "nome": s.nome}
-                for s in result.students
-            ]
-            flask_session["import_pdf_header"] = {
-                "subject_name":   h.subject_name,
-                "turma":          h.turma,
-                "periodo_letivo": h.periodo_letivo,
-                "creditos":       h.creditos,
-                "nivel":          h.nivel,
-                "professores":    h.professores,
-                "department":     h.department,
-            }
+            flask_session["temp_pdf_id"] = _save_temp_pdf(file_bytes)
+            flask_session["temp_pdf_password"] = password
 
             if matched_co:
                 existing = (
@@ -508,8 +514,28 @@ def import_pdf_new():
         # ── STEP 2a: Confirm & create (single-class) ───────────────────────
         elif action == "create_and_import":
             teacher       = current_user
-            hdr           = flask_session.get("import_pdf_header", {})
-            students_data = flask_session.get("import_pdf_students", [])
+            file_id = flask_session.get("temp_pdf_id")
+            file_bytes = _load_temp_pdf(file_id)
+            if not file_bytes:
+                flash("Sessão expirada. Faça o upload novamente.", "warning")
+                return redirect(url_for("classes.import_pdf_new"))
+                
+            password = flask_session.get("temp_pdf_password", "")
+            result = parse_pdf(file_bytes, password=password)
+            hdr = {
+                "subject_name": result.header.subject_name,
+                "turma": result.header.turma,
+                "periodo_letivo": result.header.periodo_letivo,
+                "creditos": result.header.creditos,
+                "nivel": result.header.nivel,
+                "professores": result.header.professores,
+                "department": result.header.department,
+            }
+            students_data = [{"seq": s.seq, "aluno_type": s.aluno_type, "cartao": s.cartao, "nome": s.nome} for s in result.students]
+
+            if not students_data:
+                flash("Nenhum estudante encontrado no PDF.", "warning")
+                return redirect(url_for("classes.import_pdf_new"))
 
             co = ClassOffering(
                 subject_name=hdr.get("subject_name", "Nova Turma"),
@@ -551,8 +577,9 @@ def import_pdf_new():
             log_action("roster_import", f"Nova turma criada via PDF com {added} alunos",
                        previous_value={"added": added}, class_offering_id=co.id)
             db.session.commit()
-            flask_session.pop("import_pdf_students", None)
-            flask_session.pop("import_pdf_header", None)
+            _cleanup_temp_pdf(file_id)
+            flask_session.pop("temp_pdf_id", None)
+            flask_session.pop("temp_pdf_password", None)
 
             flash(f"Turma criada com {added} aluno(s).", "success")
             return redirect(url_for("students.list_students", class_id=co.id))
@@ -560,10 +587,38 @@ def import_pdf_new():
         # ── STEP 2b: Confirm & create (multi-class) ────────────────────────
         elif action == "create_and_import_multi":
             teacher      = current_user
-            classes_info = flask_session.get("import_pdf_multi", [])
+            file_id = flask_session.get("temp_pdf_id")
+            file_bytes = _load_temp_pdf(file_id)
+            if not file_bytes:
+                flash("Sessão expirada. Faça o upload novamente.", "warning")
+                return redirect(url_for("classes.import_pdf_new"))
+                
+            password = flask_session.get("temp_pdf_password", "")
+            results = parse_pdf_multi(file_bytes, password=password)
+            classes_info = []
+            for r in results:
+                h = r.header
+                matched_co = db.session.query(ClassOffering).filter(
+                    db.func.lower(ClassOffering.subject_name) == (h.subject_name or "").lower(),
+                    ClassOffering.turma == h.turma,
+                    ClassOffering.periodo_letivo == h.periodo_letivo,
+                ).first()
+                classes_info.append({
+                    "header": {
+                        "subject_name": h.subject_name,
+                        "turma": h.turma,
+                        "periodo_letivo": h.periodo_letivo,
+                        "creditos": h.creditos,
+                        "nivel": h.nivel,
+                        "professores": h.professores,
+                        "department": h.department,
+                    },
+                    "students": [{"seq": s.seq, "aluno_type": s.aluno_type, "cartao": s.cartao, "nome": s.nome} for s in r.students],
+                    "existing_id": matched_co.id if matched_co else None,
+                })
 
             if not classes_info:
-                flash("Sessão expirada. Faça o upload novamente.", "warning")
+                flash("Nenhuma turma encontrada no PDF.", "warning")
                 return redirect(url_for("classes.import_pdf_new"))
 
             total_added   = 0
@@ -653,7 +708,9 @@ def import_pdf_new():
                     last_class_id  = co.id
 
             db.session.commit()
-            flask_session.pop("import_pdf_multi", None)
+            _cleanup_temp_pdf(file_id)
+            flask_session.pop("temp_pdf_id", None)
+            flask_session.pop("temp_pdf_password", None)
 
             flash(
                 f"Importação concluída: {total_classes} turma(s) criada(s), "
