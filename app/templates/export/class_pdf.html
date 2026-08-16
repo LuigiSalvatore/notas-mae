@@ -158,7 +158,7 @@
                 {% elif g.status == 'missed_unjustified' %}
                   FI
                 {% else %}
-                  {{ g.value|format_grade(comp.scale_type) if g.value is not None else '—' }}
+                  {{ g.value|format_grade(comp.scale_type) if g.value is not none else '—' }}
                 {% endif %}
               {% else %}
                 —
@@ -167,10 +167,10 @@
           {% endfor %}
 
           <td class="text-center" style="font-weight: bold;">
-            {{ row.avg|round(1) if row.avg is not None else '—' }}
+            {{ row.avg|round(1) if row.avg is not none else '—' }}
           </td>
           <td class="text-center">
-            {{ row.freq|round(1) if row.freq is not None else '—' }}%
+            {{ row.freq|round(1) if row.freq is not none else '—' }}%
           </td>
           <td class="text-center">
             {% set s_label = STATUS_LABELS[row.status] %}

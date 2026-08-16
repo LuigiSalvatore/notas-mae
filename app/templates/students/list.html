@@ -98,17 +98,17 @@
               <a href="{{ url_for('students.student_detail', class_id=co.id, student_id=e.student.id) }}" style="font-weight: 600; color: #FFF;">
                 {{ e.student.nome }}
               </a>
-              {% if row.needed_grade is not None and row.needed_grade > 0 %}
+              {% if row.needed_grade is not none and row.needed_grade > 0 %}
                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
                   Precisa de <strong>{{ row.needed_grade|round(1) }}</strong> nas próximas provas para passar.
                 </div>
               {% endif %}
             </td>
             <td style="text-align: center; font-weight: bold; color: var(--accent);">
-              {{ row.avg|round(1) if row.avg is not None else '—' }}
+              {{ row.avg|round(1) if row.avg is not none else '—' }}
             </td>
             <td style="text-align: center; font-weight: 500;">
-              {{ row.freq|round(1) if row.freq is not None else '—' }}%
+              {{ row.freq|round(1) if row.freq is not none else '—' }}%
             </td>
             <td style="text-align: center;">
               <!-- Badge with color toggle ability -->

@@ -79,7 +79,7 @@
           </div>
           <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem; display: flex; justify-content: space-between;">
             <span>Cartão: {{ enrollment.student.cartao }}</span>
-            <span>Freq. Acumulada: <strong id="freq-{{ enrollment.id }}">{{ record.enrollment.attendance_records|compute_student_freq|round(1) if record.enrollment.attendance_records|compute_student_freq is not None else '—' }}%</strong></span>
+            <span>Freq. Acumulada: <strong id="freq-{{ enrollment.id }}">{{ record.enrollment.attendance_records|compute_student_freq|round(1) if record.enrollment.attendance_records|compute_student_freq is not none else '—' }}%</strong></span>
           </div>
         </div>
 

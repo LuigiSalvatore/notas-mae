@@ -63,7 +63,7 @@
               <td>{{ d.cartao }}</td>
               <td>{{ d.component_name }}</td>
               <td style="text-align: center; color: var(--text-muted);">
-                {% if d.old_value is not None %}
+                {% if d.old_value is not none %}
                   {{ d.old_value|round(1) }}
                 {% else %}
                   {{ d.old_status or '—' }}

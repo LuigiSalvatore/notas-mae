@@ -116,7 +116,7 @@
                   {% set cell_class = 'grade-cell-missed-unjustified' %}
                   {% set cell_val = 'FI' %}
                 {% else %}
-                  {% set cell_val = g.value|format_grade(comp.scale_type) if g.value is not None else '' %}
+                  {% set cell_val = g.value|format_grade(comp.scale_type) if g.value is not none else '' %}
                 {% endif %}
               {% endif %}
 
@@ -128,7 +128,7 @@
             <!-- Average -->
             <td id="avg-{{ enrollment.id }}" style="text-align: center; font-weight: bold; color: var(--accent);">
               {% set avg = averages[enrollment.id] %}
-              {{ avg|round(2) if avg is not None else '—' }}
+              {{ avg|round(2) if avg is not none else '—' }}
             </td>
           </tr>
         {% endfor %}

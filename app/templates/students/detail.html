@@ -48,7 +48,7 @@
                         <span class="badge badge-danger">Falta Injustificada (FI)</span>
                       {% else %}
                         <span style="font-weight: 600; color: #FFF;">
-                          {{ g.value|format_grade(comp.scale_type) if g.value is not None else '—' }}
+                          {{ g.value|format_grade(comp.scale_type) if g.value is not none else '—' }}
                         </span>
                       {% endif %}
                     {% else %}
@@ -63,7 +63,7 @@
                 <td>Média Calculada</td>
                 <td></td>
                 <td style="text-align: center; color: var(--accent); font-size: 1.1rem;">
-                  {{ avg|round(2) if avg is not None else '—' }}
+                  {{ avg|round(2) if avg is not none else '—' }}
                 </td>
               </tr>
             </tfoot>
@@ -112,7 +112,7 @@
                 <td>Frequência Acumulada</td>
                 <td></td>
                 <td style="text-align: center; color: var(--accent); font-size: 1.1rem;">
-                  {{ freq|round(1) if freq is not None else '—' }}%
+                  {{ freq|round(1) if freq is not none else '—' }}%
                 </td>
               </tr>
             </tfoot>
