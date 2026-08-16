@@ -92,7 +92,7 @@ def new_session(class_id):
         record = AttendanceRecord(
             enrollment_id=enrollment.id,
             session_id=session_obj.id,
-            status="unmarked",
+            status="present",
         )
         db.session.add(record)
 
@@ -138,7 +138,7 @@ def session_detail(class_id, session_id):
             r = AttendanceRecord(
                 enrollment_id=enrollment.id,
                 session_id=session_id,
-                status="unmarked",
+                status="present",
             )
             db.session.add(r)
             record_map[enrollment.id] = r
