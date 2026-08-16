@@ -717,7 +717,7 @@ def import_pdf_new():
                 f"{total_added} aluno(s) importado(s) no total.",
                 "success"
             )
-            return redirect(url_for("classes.list_classes"))
+            return redirect(url_for("dashboard.index"))
 
     return render_template("classes/import_pdf_new.html", needs_password=False)
 
