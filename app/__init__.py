@@ -231,7 +231,14 @@ def _first_run_setup(app: Flask) -> None:
             admin.password_hash = password_hash
             admin.is_super_admin = True
             
-        db.session.commit()
+        from sqlalchemy.exc import IntegrityError
+        try:
+            db.session.commit()
+        except IntegrityError:
+            # Another Gunicorn worker beat us to creating the admin user.
+            # Rollback and exit setup for this worker.
+            db.session.rollback()
+            return
 
         # Write credentials file
         creds_path.write_text(
@@ -264,5 +271,8 @@ def _first_run_setup(app: Flask) -> None:
         exists = db.session.query(ClassTeacher).filter_by(class_offering_id=co.id, teacher_id=admin.id).first()
         if not exists:
             db.session.add(ClassTeacher(class_offering_id=co.id, teacher_id=admin.id, role="owner"))
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
 
