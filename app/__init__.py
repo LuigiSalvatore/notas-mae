@@ -42,7 +42,13 @@ def create_app(config_object=None) -> Flask:
         FERNET_KEY=os.environ.get("FERNET_KEY", None),
     )
 
-    # ── Load instance config (overrides above) ────────────────────────────
+    # Ensure instance directory exists first so we can generate/read config
+    os.makedirs(app.instance_path, exist_ok=True)
+
+    # If no config.py exists, generate it now so all workers get the same keys!
+    _ensure_fernet_key(app)
+
+    # ── Load instance config (overrides default secrets) ──────────────────
     if config_object:
         if isinstance(config_object, dict):
             app.config.from_mapping(config_object)
@@ -51,15 +57,15 @@ def create_app(config_object=None) -> Flask:
     else:
         app.config.from_pyfile("config.py", silent=True)
 
-
-    # Ensure instance + backup directories exist
-    os.makedirs(app.instance_path, exist_ok=True)
+    # Ensure backup directories exist
     os.makedirs(app.config["BACKUP_DIR"], exist_ok=True)
     os.makedirs(os.path.join(app.config["BACKUP_DIR"], "class"), exist_ok=True)
     os.makedirs(os.path.join(app.config["BACKUP_DIR"], "db"),    exist_ok=True)
 
-    # If no FERNET_KEY configured, generate + persist one
-    _ensure_fernet_key(app)
+    # Add ProxyFix for proper HTTPS handling behind Cloudflare Tunnel/Nginx
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 
     # ── Extensions ────────────────────────────────────────────────────────
     db.init_app(app)
