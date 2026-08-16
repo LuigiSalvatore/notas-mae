@@ -39,10 +39,14 @@ pip install -r "$APP_DIR/requirements.txt"
 # 4. Systemd configuration
 echo "Configurando serviço Systemd..."
 sudo cp "$APP_DIR/deploy/chamada-provas.service" /etc/systemd/system/
+
+# Adjust permissions so Gunicorn (running as www-data) can write to the directory
+sudo chown -R www-data:www-data "$APP_DIR"
+
 sudo systemctl daemon-reload
 sudo systemctl enable chamada-provas
 sudo systemctl start chamada-provas
 
 echo "=== Instalação concluída com sucesso! ==="
-echo "Por favor, verifique o arquivo: /opt/chamada-provas/instance/first_run_credentials.txt para obter a senha de administrador gerada."
+echo "Por favor, verifique o arquivo: /opt/chamada-provas/first_run_credentials.txt para obter a senha de administrador gerada."
 
